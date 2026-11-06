@@ -6,6 +6,11 @@ class Pkginbox < Formula
   license "MIT"
   head "https://github.com/swchck/pkginbox.git", branch: "main"
 
+  bottle do
+    root_url "https://github.com/swchck/homebrew-tap/releases/download/pkginbox-0.5.0"
+    sha256 cellar: :any_skip_relocation, arm64_sequoia: "98b9bee56ca00c71a5b2f80bd48dcce27d11330c207774c011272861deb14468"
+  end
+
   depends_on "rust" => :build
 
   def install
