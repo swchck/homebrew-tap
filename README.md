@@ -27,6 +27,12 @@ swchck/tap/<name>` compiles the same source instead.
 | `which-of-us-full` | The same game with the voices in the image instead of downloaded |
 | `wishlist-editor` | Editor for a wishlist published to GitHub Pages |
 
+Each project's release workflow points its cask here once the images are
+published, so a version bump is not something anyone has to remember. It needs
+a `TAP_TOKEN` secret in that project with write access to this repository; the
+step says so and skips itself where the secret is missing. `bin/bump <cask>
+<version>` does the same thing by hand.
+
 None of the applications is signed with an Apple Developer ID, so macOS would
 refuse to open them the first time. Each cask clears the quarantine flag after
 installing, which takes no password and nothing to confirm. They are all built
