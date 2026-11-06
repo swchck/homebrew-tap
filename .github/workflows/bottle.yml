@@ -20,11 +20,10 @@ env:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-15, macos-15-intel]
-    runs-on: ${{ matrix.os }}
+    # arm64 only. Intel macOS is a Tier 3 configuration for Homebrew, with no
+    # bottles even for rust, so bottling there would mean compiling LLVM first.
+    # An Intel machine builds this formula from source, which works fine.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -48,7 +47,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: bottle-${{ matrix.os }}
+          name: bottle-arm64
           path: |
             *.bottle.tar.gz
             *.bottle.json
