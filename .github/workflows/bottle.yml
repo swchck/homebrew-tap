@@ -26,11 +26,11 @@ jobs:
         os: [macos-15, macos-13]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           path: tap
 
-      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: Homebrew/actions/setup-homebrew@main
 
       - name: Point the tap at this checkout
         run: |
@@ -46,7 +46,7 @@ jobs:
           brew install --build-bottle "$name"
           brew bottle --json --no-rebuild --root-url="$root" "$name"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bottle-${{ matrix.os }}
           path: |
@@ -57,12 +57,12 @@ jobs:
     needs: build
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           path: tap
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: Homebrew/actions/setup-homebrew@master
+      - uses: Homebrew/actions/setup-homebrew@main
 
       - name: Point the tap at this checkout
         run: |
@@ -70,7 +70,7 @@ jobs:
           mkdir -p "$(dirname "$target")"
           ln -s "$GITHUB_WORKSPACE/tap" "$target"
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: bottle-*
           merge-multiple: true
