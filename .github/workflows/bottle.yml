@@ -1,0 +1,103 @@
+name: bottle
+
+# Run after a formula's version has been bumped and pushed:
+#   gh workflow run bottle.yml -f formula=pkginbox
+# Deliberately not triggered by the push itself — this workflow commits the
+# bottle block back to main, which would set the next run going.
+on:
+  workflow_dispatch:
+    inputs:
+      formula:
+        description: Formula to bottle
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  TAP: swchck/tap
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: tap
+
+      - uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Point the tap at this checkout
+        run: |
+          target="$(brew --repository "$TAP")"
+          mkdir -p "$(dirname "$target")"
+          ln -s "$GITHUB_WORKSPACE/tap" "$target"
+
+      - name: Build the bottle
+        run: |
+          name="$TAP/${{ inputs.formula }}"
+          version="$(brew info --json=v2 "$name" | jq -r '.formulae[0].versions.stable')"
+          root="https://github.com/${{ github.repository }}/releases/download/${{ inputs.formula }}-$version"
+          brew install --build-bottle "$name"
+          brew bottle --json --no-rebuild --root-url="$root" "$name"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottle-${{ matrix.os }}
+          path: |
+            *.bottle.tar.gz
+            *.bottle.json
+
+  publish:
+    needs: build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: tap
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Point the tap at this checkout
+        run: |
+          target="$(brew --repository "$TAP")"
+          mkdir -p "$(dirname "$target")"
+          ln -s "$GITHUB_WORKSPACE/tap" "$target"
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: bottle-*
+          merge-multiple: true
+
+      - name: Write the bottle block into the formula
+        run: brew bottle --merge --write --no-commit *.bottle.json
+
+      - name: Publish the bottles
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(brew info --json=v2 "$TAP/${{ inputs.formula }}" \
+                     | jq -r '.formulae[0].versions.stable')"
+          tag="${{ inputs.formula }}-$version"
+          # brew writes `name--version`, the URL in the bottle block has one dash
+          for file in *.bottle.tar.gz; do
+            mv "$file" "${file/--/-}"
+          done
+          gh release create "$tag" *.bottle.tar.gz \
+            --repo "${{ github.repository }}" \
+            --title "$tag" \
+            --notes "Bottles for ${{ inputs.formula }} $version"
+
+      - name: Commit the bottle block
+        working-directory: tap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: bottle ${{ inputs.formula }}"
+          git push
