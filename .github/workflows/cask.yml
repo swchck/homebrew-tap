@@ -1,0 +1,53 @@
+name: cask
+
+# Fired by a project's own release workflow once the assets are published:
+#   gh api repos/swchck/homebrew-tap/dispatches -f event_type=cask \
+#      -f 'client_payload[casks]=which-of-us,which-of-us-full' \
+#      -f 'client_payload[version]=1.2.0'
+# That call needs a token with write access to this repository, which the
+# release workflow holds as a secret; its own GITHUB_TOKEN cannot reach here.
+on:
+  repository_dispatch:
+    types: [cask]
+  workflow_dispatch:
+    inputs:
+      casks:
+        description: Casks to bump, comma separated
+        required: true
+        type: string
+      version:
+        description: Version to point them at
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Homebrew/actions/setup-homebrew@main
+
+      - name: Point the casks at the new version
+        env:
+          CASKS: ${{ inputs.casks || github.event.client_payload.casks }}
+          VERSION: ${{ inputs.version || github.event.client_payload.version }}
+        run: |
+          echo "$CASKS" | tr ',' '\n' | while read -r cask; do
+            cask="$(echo "$cask" | xargs)"
+            [ -n "$cask" ] || continue
+            ./bin/bump "$cask" "$VERSION"
+            brew style "Casks/$cask.rb"
+          done
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --quiet && exit 0
+          git commit -am "chore: bump casks to $VERSION"
+          git push

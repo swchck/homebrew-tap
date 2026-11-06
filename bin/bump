@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Point a cask at a new version and refresh its checksums.
+
+Takes the cask's own url template as the source of truth, so a release only
+has to say which cask and which version — nothing here knows the shape of any
+one project's asset names.
+"""
+
+import hashlib
+import pathlib
+import re
+import sys
+import urllib.request
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+def arch_map(source: str) -> dict[str, str]:
+    """`arch arm: "arm64", intel: "x64"` — absent for a single-image cask."""
+    line = re.search(r'^\s*arch\s+(.+)$', source, re.M)
+    if not line:
+        return {}
+    return dict(re.findall(r'(\w+):\s*"([^"]+)"', line.group(1)))
+
+
+def url_for(source: str, version: str, arch: str | None) -> str:
+    template = re.search(r'^\s*url\s+"([^"]+)"', source, re.M).group(1)
+    expanded = template.replace('#{version}', version)
+    return expanded if arch is None else expanded.replace('#{arch}', arch)
+
+
+def digest(url: str) -> str:
+    sha = hashlib.sha256()
+    with urllib.request.urlopen(url) as response:
+        for chunk in iter(lambda: response.read(1 << 20), b''):
+            sha.update(chunk)
+    return sha.hexdigest()
+
+
+def sha256_stanza(sums: dict[str | None, str]) -> str:
+    if list(sums) == [None]:
+        return f'  sha256 "{sums[None]}"'
+    # Homebrew's style check wants the hashes aligned under each other.
+    width = max(len(key) for key in sums)
+    lines = [f'{key + ":":<{width + 1}} "{value}"' for key, value in sums.items()]
+    return '  sha256 ' + (',\n' + ' ' * 9).join(lines)
+
+
+def main(cask: str, version: str) -> None:
+    path = ROOT / 'Casks' / f'{cask}.rb'
+    source = path.read_text()
+
+    arches = arch_map(source)
+    targets = [(key, value) for key, value in arches.items()] or [(None, None)]
+    sums = {key: digest(url_for(source, version, value)) for key, value in targets}
+
+    source = re.sub(r'^(\s*version\s+)"[^"]+"', rf'\g<1>"{version}"', source, count=1, flags=re.M)
+    source = re.sub(
+        r'^  sha256 .*?"$',
+        sha256_stanza(sums).replace('\\', '\\\\'),
+        source,
+        count=1,
+        flags=re.M | re.S,
+    )
+    path.write_text(source)
+    print(f'{cask} {version}')
+    for key, value in sums.items():
+        print(f'  {key or "universal"}: {value}')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        sys.exit('usage: bump <cask> <version>')
+    main(sys.argv[1], sys.argv[2].lstrip('v'))
