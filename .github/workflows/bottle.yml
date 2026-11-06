@@ -19,23 +19,21 @@ env:
   TAP: swchck/tap
 
 jobs:
-  build:
-    # arm64 only. Intel macOS is a Tier 3 configuration for Homebrew, with no
-    # bottles even for rust, so bottling there would mean compiling LLVM first.
-    # An Intel machine builds this formula from source, which works fine.
+  # arm64 only. Intel macOS is a Tier 3 configuration for Homebrew, with no
+  # bottles even for rust, so bottling there would mean compiling LLVM first.
+  # An Intel machine builds this formula from source, which works fine.
+  bottle:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v7
-        with:
-          path: tap
-
       - uses: Homebrew/actions/setup-homebrew@main
 
-      - name: Point the tap at this checkout
+      # The tap is cloned from the remote rather than linked to a checkout:
+      # the runner's workspace can sit inside the Homebrew repository, and a
+      # symlink between the two turns into a loop.
+      - name: Tap
         run: |
-          target="$(brew --repository "$TAP")"
-          mkdir -p "$(dirname "$target")"
-          ln -s "$GITHUB_WORKSPACE/tap" "$target"
+          brew tap "$TAP" "https://github.com/${{ github.repository }}"
+          brew trust --tap "$TAP"
 
       - name: Build the bottle
         run: |
@@ -44,35 +42,7 @@ jobs:
           root="https://github.com/${{ github.repository }}/releases/download/${{ inputs.formula }}-$version"
           brew install --build-bottle "$name"
           brew bottle --json --no-rebuild --root-url="$root" "$name"
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: bottle-arm64
-          path: |
-            *.bottle.tar.gz
-            *.bottle.json
-
-  publish:
-    needs: build
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          path: tap
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: Homebrew/actions/setup-homebrew@main
-
-      - name: Point the tap at this checkout
-        run: |
-          target="$(brew --repository "$TAP")"
-          mkdir -p "$(dirname "$target")"
-          ln -s "$GITHUB_WORKSPACE/tap" "$target"
-
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: bottle-*
-          merge-multiple: true
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Write the bottle block into the formula
         run: brew bottle --merge --write --no-commit *.bottle.json
@@ -81,22 +51,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          version="$(brew info --json=v2 "$TAP/${{ inputs.formula }}" \
-                     | jq -r '.formulae[0].versions.stable')"
-          tag="${{ inputs.formula }}-$version"
-          # brew writes `name--version`, the URL in the bottle block has one dash
+          # brew writes `name--version`; the URL in the bottle block has one dash
           for file in *.bottle.tar.gz; do
             mv "$file" "${file/--/-}"
           done
-          gh release create "$tag" *.bottle.tar.gz \
+          gh release create "${{ inputs.formula }}-$VERSION" *.bottle.tar.gz \
             --repo "${{ github.repository }}" \
-            --title "$tag" \
-            --notes "Bottles for ${{ inputs.formula }} $version"
+            --title "${{ inputs.formula }} $VERSION" \
+            --notes "Bottles for ${{ inputs.formula }} $VERSION"
 
       - name: Commit the bottle block
-        working-directory: tap
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          cd "$(brew --repository "$TAP")"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore: bottle ${{ inputs.formula }}"
-          git push
+          git remote set-url origin \
+            "https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}"
+          git commit -am "chore: bottle ${{ inputs.formula }} $VERSION"
+          git push origin HEAD:main
