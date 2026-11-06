@@ -50,4 +50,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git diff --quiet && exit 0
           git commit -am "chore: bump casks to $VERSION"
-          git push
+          # checkout leaves the branch without an upstream, so name it
+          git push origin HEAD:main
