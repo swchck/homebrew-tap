@@ -1,8 +1,8 @@
 class Pkginbox < Formula
   desc "Inbox for packages installed by hand, outside the dotfiles manifest"
   homepage "https://github.com/swchck/pkginbox"
-  url "https://github.com/swchck/pkginbox/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "cba5b76c2e0fadc9dd71e0a887760fb7c8805f0fa7964f4434bd6f2d167ca2fe"
+  url "https://github.com/swchck/pkginbox/archive/refs/tags/v0.2.0.tar.gz"
+  sha256 "563cfa21e102cbea8e13619d69a473f8de3541f30a94c068d087b612a3a11db2"
   license "MIT"
   head "https://github.com/swchck/pkginbox.git", branch: "main"
 
