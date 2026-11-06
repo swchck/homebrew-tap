@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 cask "which-of-us" do
-  version "1.2.1"
-  sha256 "9b57a68587ee977dc35333737ae8fe8eac9b850770231d9ca37908736d94f2a5"
+  version "1.2.2"
+  sha256 "9f99f02ca7e340d8034776e5e014603821248d30ed006e376951f29229bfbf2b"
 
   url "https://github.com/swchck/which-of-us/releases/download/v#{version}/kto-iz-nas-macos-arm64.dmg"
   name "Кто из нас"
