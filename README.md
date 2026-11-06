@@ -24,9 +24,10 @@ swchck/tap/<name>` compiles the same source instead.
 | `pelican-mods` | Stardew Valley mod manager and launcher |
 | `svoya-igra` | Quiz game in the Jeopardy format |
 | `which-of-us` | Party game about guessing who in the room fits the question |
+| `which-of-us-full` | The same game with the voices in the image instead of downloaded |
 | `wishlist-editor` | Editor for a wishlist published to GitHub Pages |
 
-None of the applications is signed with an Apple Developer ID, so macOS
-refuses to open them the first time. Each cask says in its caveats how to
-allow it. Homebrew no longer has a `--no-quarantine` flag, so there is no way
-to skip that step from the install command.
+None of the applications is signed with an Apple Developer ID, so macOS would
+refuse to open them the first time. Each cask clears the quarantine flag after
+installing, which takes no password and nothing to confirm. They are all built
+by my own release workflows from the sources in these repositories.

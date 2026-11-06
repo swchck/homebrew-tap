@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 cask "which-of-us" do
-  version "1.1.0"
-  sha256 "06b641c9d7c65fde5e80c3fdb22a96b3ba9fbdf092d2c3d698be87637069e889"
+  version "1.2.0"
+  sha256 "114d53d10c41bcdca2261a2e6b33824c1966e1cbd5fef963f0fed34230a0283b"
 
   url "https://github.com/swchck/which-of-us/releases/download/v#{version}/kto-iz-nas-macos-arm64.dmg"
   name "Кто из нас"
@@ -13,6 +15,7 @@ cask "which-of-us" do
     strategy :github_latest
   end
 
+  conflicts_with cask: "swchck/tap/which-of-us-full"
   # Only an arm64 image is published; the release has no Intel build to point at.
   depends_on arch: :arm64
   depends_on :macos
@@ -36,6 +39,10 @@ cask "which-of-us" do
   ]
 
   caveats <<~EOS
+    This is the light build: it carries no voices, and offers to download them
+    (about 1.1 GB) on first run. For a machine that will have no network, install
+    which-of-us-full instead.
+
     Кто из нас is not signed with an Apple Developer ID, so this cask clears the
     quarantine flag after installing it. Without that macOS would refuse to
     open the app until you allowed it in System Settings.
